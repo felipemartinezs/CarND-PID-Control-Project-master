@@ -59,40 +59,60 @@ More information is only accessible by people who are already enrolled in Term 2
 of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
 for instructions and the project rubric.
 
-## Hints!
+## Reflections
 
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
+The project focuses on designing a PID controller and tune the PID hyperparameters for the autonomous vehicle to drive through the simulated environment. The simulator provides cross-track error (CTE), speed, and steering angle data via a local Websocket. The PID controller must respond with steering and throttle commands to drive around the simulator road.
 
-## Call for IDE Profiles Pull Requests
 
-Help your fellow students!
+![path-planning](images/Capture.GIF)
 
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
 
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
+## PID Controller 
 
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
+### Proportional Controller
 
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
+The proportional component is useful for finding out the sudden change in error and act accordingly. The error function we use here is the Cross-track error, which is the difference between the vehicle location and the lane's center. The proportional controller adjusts the steering value with the constant Kp multiplied with the cross-track error. This enables the vehicle to track errors fast and act faster.
 
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
+The main drawback of this P controller is that the vehicle overshoots the desired position and then returns to it by adjusting the steering angle in the opposite direction based on the error. But this overshoot drives our vehicle to oscillations as the car crosses the center lane each time and while coming back to center, it again overshoots and causes oscillation.
 
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
+### Proportional Derivative Controller 
+To solve this oscillation around the steady-state, we add a derivative component. The derivate component takes the difference between the previous cross-track error and the present cross-track error divided by time and multiplied by constant Kd. This causes the error to be steady-state without any overshoot, thus eliminating the oscillations around the steady-state. Based on the difference between the previous and current CTE values, it reduces the steering angle given by the P controller. When a current error is less than the previous error, it counters steers to avoid the oscillations around the steady-state.
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
+The main drawback of the PD controller is that it is highly vulnerable to noise. Previously, we assumed that the wheels are perfectly aligned with the 0 degrees, but whenever there is a systematic bias, the wheel may not be 100% aligned with 0 degrees but may have some offset as below.
 
+
+### Proportional Integral Controller 
+It can be used as an Integral controller to solve systematic bias because the integral controller always brings the steady-state to 0 irrespective of any noise. The integral controller computes the sum of the previous CTE error and multiplies it by a constant Ki. Whenever it finds that the error remains higher (when PD didn't converge) based on the Ki value, it applies a steering action to eliminate the error and bring the car closer to the lane's center even though there is a systematic bias.
+
+The only drawback of having the Integral element is that it always tries to bring the error to 0, practically impossible. The error can only bring the error down to a lower value. The Integral element still steers even when the error is lower, and that causes overshoot, leading to oscillations. These oscillations are amplified when the speed is higher and the car is thrown out of track. Thus to solve this, we always keep a fairly lower value for Ki.
+
+The Integral element is modified to take the previous 50 CTE error alone to detect the current steering angle. This allowed faster response when the PD didn't converge, and we have sharp corners.
+
+
+<h2>PID Equation </h2>
+
+![path-planning](images/pid_ecuation.GIF)
+
+<img src="images/Capture2.JPG" alt="pid"/>
+
+<h2>System architecture </h2>
+
+<p> We use a separate controller to control the steering angle and a separate controller for controlling the throttle. The steering angle controller uses CTE as the error metric, while the throttle controller uses Current Speed -  desired speed (30mph) as the error metric.</p>
+
+<img src="images/Capture3.JPG" alt="control"/>
+
+
+<p> The Tuning of the Kp, Ki, and Kd values is done manually based on the above definition. The values are given in the below table.</p>
+
+<h3> Steering angle Controller </h3>
+
+| Kp | Ki | Kd |
+|  :---: |     :---:      |    :---:      |
+| 0.09   | 0.000001     | 4.7           |
+
+
+## Results
+
+A video of the car driving autonomously around the track in the simulator (click to see the full video)
+
+[![alt text][pid_video]](https://youtu.be/SR42jbhC1PY)
