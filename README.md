@@ -115,4 +115,4 @@ The Integral element is modified to take the previous 50 CTE error alone to dete
 
 A video of the car driving autonomously around the track in the simulator (click to see the full video)
 
-[![alt text][pid_video]](https://youtu.be/SR42jbhC1PY)
+https://youtu.be/SR42jbhC1PY
